@@ -1,0 +1,570 @@
+# <!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Juego Matemático</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    min-height:100vh;
+}
+
+header{
+    background:#111827;
+    padding:20px;
+    text-align:center;
+}
+
+header h1{
+    color:#38bdf8;
+    font-size:35px;
+}
+
+.container{
+    width:90%;
+    max-width:900px;
+    margin:auto;
+    margin-top:20px;
+}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:20px;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:#38bdf8;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+button:hover{
+    background:#0284c7;
+}
+
+input{
+    width:60px;
+    height:60px;
+    text-align:center;
+    font-size:25px;
+    border:none;
+    border-radius:10px;
+    margin:5px;
+}
+
+.hidden{
+    display:none;
+}
+
+.board{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    margin-top:20px;
+}
+
+.row{
+    display:flex;
+}
+
+.correct{
+    color:#22c55e;
+    margin-top:15px;
+    text-align:center;
+}
+
+.wrong{
+    color:#ef4444;
+    margin-top:15px;
+    text-align:center;
+}
+
+.ranking-user{
+    background:#334155;
+    padding:12px;
+    border-radius:10px;
+    margin-top:10px;
+}
+
+#rulesBox{
+    background:#334155;
+    padding:15px;
+    border-radius:10px;
+    margin-top:10px;
+}
+
+footer{
+    text-align:center;
+    padding:20px;
+    color:#94a3b8;
+}
+
+.topic-btn{
+    margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Juego Matemático</h1>
+</header>
+
+<div class="container">
+
+    <!-- LOGIN -->
+
+    <div class="card" id="loginCard">
+
+        <h2>Ingresar</h2>
+
+        <input
+            style="width:100%;height:auto;padding:12px;font-size:16px"
+            type="text"
+            id="username"
+            placeholder="Tu nombre"
+        >
+
+        <button onclick="login()">
+            Entrar
+        </button>
+
+    </div>
+
+    <!-- TEMAS -->
+
+    <div class="card hidden" id="topicsCard">
+
+        <h2>Temas</h2>
+
+        <button
+            class="topic-btn"
+            onclick="startGame('magic')"
+        >
+            Cuadro mágico
+        </button>
+
+        <button
+            class="topic-btn"
+            onclick="startGame('sudoku')"
+        >
+            Sudoku
+        </button>
+
+    </div>
+
+    <!-- JUEGO -->
+
+    <div class="card hidden" id="gameCard">
+
+        <h2 id="gameTitle"></h2>
+
+        <h3>
+            Puntos:
+            <span id="score">0</span>
+        </h3>
+
+        <button onclick="toggleRules()">
+            📘 Reglas
+        </button>
+
+        <div id="rulesBox" class="hidden">
+
+            <p>✔ Completa correctamente</p>
+            <p>✔ Ganas 10 puntos</p>
+            <p>✔ El botón siguiente aparece al acertar</p>
+
+        </div>
+
+        <h2
+            id="resultText"
+            style="text-align:center;margin-top:20px"
+        ></h2>
+
+        <div id="board" class="board"></div>
+
+        <button onclick="checkBoard()">
+            Verificar
+        </button>
+
+        <button
+            id="nextBtn"
+            class="hidden"
+            onclick="nextBoard()"
+        >
+            Siguiente
+        </button>
+
+        <p id="message"></p>
+
+    </div>
+
+    <!-- RANKING -->
+
+    <div class="card">
+
+        <h2>Ranking</h2>
+
+        <div id="rankingList"></div>
+
+    </div>
+
+</div>
+
+<footer>
+    Nicolas Hernandez Gomez 7-B
+</footer>
+
+<script>
+
+let currentUser = "";
+let score = 0;
+let currentTopic = "";
+
+let currentSolution = [];
+
+function login(){
+
+    const username =
+        document.getElementById("username").value;
+
+    if(username.trim() === ""){
+        alert("Ingresa tu nombre");
+        return;
+    }
+
+    currentUser = username;
+
+    let users =
+        JSON.parse(localStorage.getItem("mathUsers")) || [];
+
+    let existing =
+        users.find(user => user.name === currentUser);
+
+    if(existing){
+
+        score = existing.score;
+
+    }else{
+
+        users.push({
+            name:currentUser,
+            score:0
+        });
+
+        localStorage.setItem(
+            "mathUsers",
+            JSON.stringify(users)
+        );
+
+    }
+
+    document.getElementById("loginCard")
+        .classList.add("hidden");
+
+    document.getElementById("topicsCard")
+        .classList.remove("hidden");
+
+    updateScore();
+
+    updateRanking();
+
+}
+
+function startGame(topic){
+
+    currentTopic = topic;
+
+    document.getElementById("gameCard")
+        .classList.remove("hidden");
+
+    if(topic === "magic"){
+
+        document.getElementById("gameTitle")
+            .innerText = "Cuadro mágico";
+
+    }else{
+
+        document.getElementById("gameTitle")
+            .innerText = "Sudoku";
+
+    }
+
+    generateBoard();
+
+}
+
+function generateBoard(){
+
+    document.getElementById("nextBtn")
+        .classList.add("hidden");
+
+    document.getElementById("message")
+        .innerHTML = "";
+
+    const board =
+        document.getElementById("board");
+
+    board.innerHTML = "";
+
+    currentSolution = [];
+
+    // CUADRO MAGICO
+
+    if(currentTopic === "magic"){
+
+        let target =
+            Math.floor(Math.random()*20)+15;
+
+        document.getElementById("resultText")
+            .innerText =
+            "Resultado: " + target;
+
+        for(let i=0;i<3;i++){
+
+            let row =
+                document.createElement("div");
+
+            row.className = "row";
+
+            currentSolution[i] = [];
+
+            let total = 0;
+
+            for(let j=0;j<3;j++){
+
+                let value;
+
+                if(j < 2){
+
+                    value =
+                    Math.floor(Math.random()*9)+1;
+
+                    total += value;
+
+                }else{
+
+                    value = target - total;
+
+                }
+
+                currentSolution[i][j] = value;
+
+                let input =
+                    document.createElement("input");
+
+                input.id = `cell-${i}-${j}`;
+
+                row.appendChild(input);
+
+            }
+
+            board.appendChild(row);
+
+        }
+
+    }
+
+    // SUDOKU
+
+    if(currentTopic === "sudoku"){
+
+        document.getElementById("resultText")
+            .innerText =
+            "Completa del 1 al 9 sin repetir";
+
+        let nums =
+            [1,2,3,4,5,6,7,8,9];
+
+        nums.sort(()=>Math.random()-0.5);
+
+        let index = 0;
+
+        for(let i=0;i<3;i++){
+
+            let row =
+                document.createElement("div");
+
+            row.className = "row";
+
+            currentSolution[i] = [];
+
+            for(let j=0;j<3;j++){
+
+                currentSolution[i][j] =
+                    nums[index];
+
+                index++;
+
+                let input =
+                    document.createElement("input");
+
+                input.id = `cell-${i}-${j}`;
+
+                row.appendChild(input);
+
+            }
+
+            board.appendChild(row);
+
+        }
+
+    }
+
+}
+
+function checkBoard(){
+
+    let correct = true;
+
+    for(let i=0;i<3;i++){
+
+        for(let j=0;j<3;j++){
+
+            let value =
+                document.getElementById(
+                    `cell-${i}-${j}`
+                ).value;
+
+            if(Number(value)
+                !== currentSolution[i][j]){
+
+                correct = false;
+
+            }
+
+        }
+
+    }
+
+    let message =
+        document.getElementById("message");
+
+    if(correct){
+
+        score += 10;
+
+        message.innerHTML =
+            "✔ Correcto";
+
+        message.className = "correct";
+
+        document.getElementById("nextBtn")
+            .classList.remove("hidden");
+
+    }else{
+
+        score -= 5;
+
+        message.innerHTML =
+            "✖ Incorrecto";
+
+        message.className = "wrong";
+
+    }
+
+    updateScore();
+
+    saveScore();
+
+    updateRanking();
+
+}
+
+function nextBoard(){
+
+    generateBoard();
+
+}
+
+function updateScore(){
+
+    document.getElementById("score")
+        .innerText = score;
+
+}
+
+function saveScore(){
+
+    let users =
+        JSON.parse(localStorage.getItem("mathUsers")) || [];
+
+    let index =
+        users.findIndex(
+            user => user.name === currentUser
+        );
+
+    users[index].score = score;
+
+    localStorage.setItem(
+        "mathUsers",
+        JSON.stringify(users)
+    );
+
+}
+
+function updateRanking(){
+
+    let ranking =
+        document.getElementById("rankingList");
+
+    let users =
+        JSON.parse(localStorage.getItem("mathUsers")) || [];
+
+    users.sort((a,b)=> b.score - a.score);
+
+    ranking.innerHTML = "";
+
+    users.forEach((user,index)=>{
+
+        ranking.innerHTML += `
+
+        <div class="ranking-user">
+
+            ${index + 1}.
+            ${user.name}
+            - ${user.score} pts
+
+        </div>
+
+        `;
+
+    });
+
+}
+
+function toggleRules(){
+
+    document.getElementById("rulesBox")
+        .classList.toggle("hidden");
+
+}
+
+updateRanking();
+
+</script>
+
+</body>
+</html>
